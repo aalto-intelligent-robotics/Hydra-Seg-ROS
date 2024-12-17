@@ -1,0 +1,19 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="model_path" default="/home/ros/models/yolo/yolo11l-seg.engine"/>
+  <arg name="conf" default="0.5"/>
+  <arg name="depth_threshold" default="-1"/>
+  <arg name="color_topic" default="/flat_data_player/color_image"/>
+  <arg name="depth_topic" default="/flat_data_player/depth_image"/>
+  <arg name="cam_info_topic" default="/flat_data_player/depth_camera_info"/>
+  <arg name="yolo_verbosity" default="0"/>
+  <node name="yolo_ros_node" pkg="hydra_seg_ros" type="yolo_ros_node.py" output="screen">
+    <env name="YOLO_VERBOSE" value="$(arg yolo_verbosity)"/>
+    <remap from="/yolo_ros_node/cam_info" to="$(arg cam_info_topic)"/>
+    <remap from="/yolo_ros_node/colors" to="$(arg color_topic)"/>
+    <remap from="/yolo_ros_node/depth" to="$(arg depth_topic)"/>
+    <param name="model_path" value="$(arg model_path)"/>
+    <param name="conf" value="$(arg conf)"/>
+    <param name="depth_threshold" value="$(arg depth_threshold)"/>
+  </node>
+</launch>
