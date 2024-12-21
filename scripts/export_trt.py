@@ -12,7 +12,7 @@ args = parser.parse_args()
 model = YOLO(args.input)
 model.export(
     format="engine",
-    # imgsz=640,
+    imgsz=800,
     # device=0,
     # int8=False,
     # half=False,

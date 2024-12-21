@@ -3,10 +3,15 @@
   <arg name="model_path" default="/home/ros/models/yolo/yolo11l-seg.engine"/>
   <arg name="conf" default="0.5"/>
   <arg name="depth_threshold" default="-1"/>
-  <arg name="color_topic" default="/flat_data_player/color_image"/>
-  <arg name="depth_topic" default="/flat_data_player/depth_image"/>
-  <arg name="cam_info_topic" default="/flat_data_player/depth_camera_info"/>
+  <arg name="camera_name" default="astra2" />
+  <!-- <arg name="color_topic" default="/flat_data_player/color_image"/> -->
+  <!-- <arg name="depth_topic" default="/flat_data_player/depth_image"/> -->
+  <!-- <arg name="cam_info_topic" default="/flat_data_player/depth_camera_info"/> -->
+  <arg name="color_topic" default="/$(arg camera_name)/color/image_raw"/>
+  <arg name="depth_topic" default="/$(arg camera_name)/depth/image_raw"/>
+  <arg name="cam_info_topic" default="/$(arg camera_name)/depth/camera_info"/>
   <arg name="yolo_verbosity" default="0"/>
+  <arg name="color_mesh_by_label" default="false"/>
   <node name="yolo_ros_node" pkg="hydra_seg_ros" type="yolo_ros_node.py" output="screen">
     <env name="YOLO_VERBOSE" value="$(arg yolo_verbosity)"/>
     <remap from="/yolo_ros_node/cam_info" to="$(arg cam_info_topic)"/>
@@ -15,5 +20,6 @@
     <param name="model_path" value="$(arg model_path)"/>
     <param name="conf" value="$(arg conf)"/>
     <param name="depth_threshold" value="$(arg depth_threshold)"/>
+    <param name="color_mesh_by_label" value="$(arg color_mesh_by_label)"/>
   </node>
 </launch>

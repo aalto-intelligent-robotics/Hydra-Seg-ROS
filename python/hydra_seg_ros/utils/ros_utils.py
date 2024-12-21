@@ -20,6 +20,7 @@ def form_label_msg(
     bridge: CvBridge,
 ) -> Image:
     masked_img = viz.masks(orig_img, masks, colors, alpha=1, blacked_out_rest=True)
+    # masked_img = cv2.resize(masked_img, (640, 480))
     label_msg = bridge.cv2_to_imgmsg(masked_img, encoding="rgb8")
     return label_msg
 
@@ -28,6 +29,8 @@ def form_masks_msg(
     class_ids: List[int],
     masks_tensor: Tensor,
     bridge: CvBridge,
+    height: int,
+    width: int,
 ) -> Masks:
     assert len(class_ids) == len(
         masks_tensor
@@ -35,8 +38,9 @@ def form_masks_msg(
     masks_msg = Masks()
     for id, mask in zip(class_ids, masks_tensor):
         m_msg = Mask()
+        mask_cv = mask.detach().cpu().numpy().astype(np.uint8)
         m_msg.data = bridge.cv2_to_imgmsg(
-            mask.detach().cpu().numpy().astype(np.uint8), encoding="mono8"
+            cv2.resize(mask_cv, (width, height)), encoding="mono8"
         )
         m_msg.class_id = int(id)
         masks_msg.masks.append(m_msg)

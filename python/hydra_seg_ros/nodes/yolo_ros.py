@@ -20,17 +20,18 @@ class YoloRosNode:
     def __init__(self):
         rospy.init_node("yolo_ros_node")
         self.init_ros()
-        self.model = YOLO(self.model_path, verbose=False)
         rospy.loginfo("Starting YoloRosNode.")
 
     def init_ros(self):
         self.model_path = rospy.get_param(
             "~model_path", Path.home() / "models/yolo/yolo11l-seg.engine"
         )
+        self.model = YOLO(self.model_path, verbose=False)
         self.conf = rospy.get_param("~conf", 0.7)
         self.depth_threshold = rospy.get_param("~depth_threshold", -1)
         self.label_space = rospy.get_param("~label_space", "coco")
         self.viz_label = rospy.get_param("~viz_label", "true")
+        self.color_mesh_by_label = rospy.get_param("~color_mesh_by_label", "false")
 
         self.cam_info_sub = message_filters.Subscriber("~cam_info", CameraInfo)
         self.color_sub = message_filters.Subscriber("~colors", Image)
@@ -76,11 +77,19 @@ class YoloRosNode:
             [labels.COCO_COLORS[x] for x in class_idcs],
             self.bridge,
         )
-        masks_msg = ros_utils.form_masks_msg(class_idcs, masks, self.bridge)
+        if self.color_mesh_by_label:
+            color_msg = label_msg
+        masks_msg = ros_utils.form_masks_msg(class_idcs, masks, self.bridge, height, width)
 
+        # color_cv = cv2.resize(color_cv, (640, 480))
+        # depth_cv = cv2.resize(depth_cv, (640, 480))
+        # color_msg = self.bridge.cv2_to_imgmsg(color_cv, encoding="rgb8")
+        # depth_msg = self.bridge.cv2_to_imgmsg(depth_cv)
         cam_info_msg_pub, vision_packet_msg = ros_utils.pack_vision_msgs(
             cam_info_msg, color_msg, depth_msg, label_msg, masks_msg, self.bridge
         )
+        # cam_info_msg_pub.height = 480
+        # cam_info_msg_pub.width = 640
         self.cam_info_pub.publish(cam_info_msg_pub)
         self.vision_packet_pub.publish(vision_packet_msg)
         if self.viz_label:
