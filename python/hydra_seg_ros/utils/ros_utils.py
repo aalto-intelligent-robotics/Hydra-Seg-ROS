@@ -1,7 +1,5 @@
-import cv2
 import numpy as np
-from typing import Optional, Union, List, Tuple
-import torch
+from typing import List, Tuple, Dict, Set
 from torch import Tensor
 from copy import deepcopy
 
@@ -16,7 +14,7 @@ from hydra_seg_ros.utils import viz
 def form_label_msg(
     orig_img: Tensor,
     masks: Tensor,
-    colors: List[List[int]],
+    colors: List[Tuple[int, int, int]],
     bridge: CvBridge,
 ) -> Image:
     masked_img = viz.masks(orig_img, masks, colors, alpha=1, blacked_out_rest=True)
@@ -28,11 +26,14 @@ def form_masks_msg(
     class_ids: List[int],
     masks_tensor: Tensor,
     bridge: CvBridge,
-) -> Masks:
+) -> Tuple[Masks, Dict]:
     assert len(class_ids) == len(
         masks_tensor
     ), "Need equal number of masks and Ids to form Masks ROS message"
     masks_msg = Masks()
+    masks_msg.masks = []
+    local_id_to_class = {}
+    instance_cnt = 1
     for id, mask in zip(class_ids, masks_tensor):
         m_msg = Mask()
         m_msg.data = bridge.cv2_to_imgmsg(
@@ -40,7 +41,11 @@ def form_masks_msg(
         )
         m_msg.class_id = int(id)
         masks_msg.masks.append(m_msg)
-    return masks_msg
+        # {local_id -> class}
+        m_msg.local_id = instance_cnt
+        local_id_to_class[id] = instance_cnt
+        instance_cnt += 1
+    return masks_msg, local_id_to_class
 
 
 def pack_vision_msgs(
@@ -48,8 +53,7 @@ def pack_vision_msgs(
     color_msg: Image,
     depth_msg: Image,
     label_msg: Image,
-    masks_msg: Optional[Masks],
-    bridge: CvBridge,
+    masks_msg: Masks,
 ) -> Tuple[CameraInfo, HydraVisionPacket]:
     # TODO: Check the dimensions and type
     vision_packet_msg = HydraVisionPacket()
@@ -67,8 +71,9 @@ def pack_vision_msgs(
     vision_packet_msg.color.header = depth_msg.header
     vision_packet_msg.label.header = depth_msg.header
     vision_packet_msg.masks.header = depth_msg.header
-    for i, _ in enumerate(masks_msg.masks):
-        masks_msg.masks[i].data.header = depth_msg.header
+    if masks_msg.masks:
+        for i, _ in enumerate(masks_msg.masks):
+            masks_msg.masks[i].data.header = depth_msg.header
 
     cam_info_msg.header.stamp = now
     return cam_info_msg, vision_packet_msg

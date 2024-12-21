@@ -1,3 +1,7 @@
+# fmt: off
+KITCHEN_LABEL_SPACE = {39, 41, 42, 43, 44, 45, 56, 57, 60, 62, 63, 64, 65, 66, 67, 68, 75, 76}
+FLAT_LABEL_SPACE = {56, 60, 41, 69, 57, 59, 73, 58, 75, 74, 71}
+# fmt: on
 COCO_FULL_CATEGORIES = {
     0: "person",
     1: "bicycle",

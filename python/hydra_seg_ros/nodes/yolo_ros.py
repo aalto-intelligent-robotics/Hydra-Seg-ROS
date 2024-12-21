@@ -4,16 +4,13 @@ from cv_bridge import CvBridge
 from pathlib import Path
 import numpy as np
 import torch
-import cv2
 
 from ultralytics import YOLO
-from ultralytics.utils.plotting import colors
-from ultralytics.engine.results import Masks
 
 from sensor_msgs.msg import Image, CameraInfo
-from hydra_stretch_msgs.msg import Mask, Masks, HydraVisionPacket
+from hydra_stretch_msgs.msg import HydraVisionPacket
 
-from hydra_seg_ros.utils import viz, labels, ros_utils
+from hydra_seg_ros.utils import labels, ros_utils
 
 
 class YoloRosNode:
@@ -22,15 +19,23 @@ class YoloRosNode:
         self.init_ros()
         self.model = YOLO(self.model_path, verbose=False)
         rospy.loginfo("Starting YoloRosNode.")
+        if self.label_space_name == "kitchen":
+            self.label_space = labels.KITCHEN_LABEL_SPACE
+        elif self.label_space_name == "flat":
+            self.label_space = labels.FLAT_LABEL_SPACE
+        else:
+            raise NotImplementedError(f"{self.label_space_name} is not implemented")
 
     def init_ros(self):
-        self.model_path = rospy.get_param(
-            "~model_path", Path.home() / "models/yolo/yolo11l-seg.engine"
+        self.model_path = str(
+            rospy.get_param(
+                "~model_path", Path.home() / "models/yolo/yolo11l-seg.engine"
+            )
         )
         self.conf = rospy.get_param("~conf", 0.7)
-        self.depth_threshold = rospy.get_param("~depth_threshold", -1)
-        self.label_space = rospy.get_param("~label_space", "coco")
+        self.label_space_name = rospy.get_param("~label_space", "coco")
         self.viz_label = rospy.get_param("~viz_label", "true")
+        self.viz_label = rospy.get_param("~label_space", "kitchen")
 
         self.cam_info_sub = message_filters.Subscriber("~cam_info", CameraInfo)
         self.color_sub = message_filters.Subscriber("~colors", Image)
@@ -55,31 +60,30 @@ class YoloRosNode:
         self, cam_info_msg: CameraInfo, color_msg: Image, depth_msg: Image
     ):
         color_cv = self.bridge.imgmsg_to_cv2(color_msg)
-        depth_cv = self.bridge.imgmsg_to_cv2(depth_msg)
-        height, width, _ = color_cv.shape
         pred = self.model(color_cv, conf=self.conf)
         class_idcs = pred[0].boxes.cls.cpu().numpy().astype(np.uint8)
         masks = torch.tensor([])
         if pred[0].masks is not None:
             masks = pred[0].masks.data
-        if self.depth_threshold != -1 and depth_cv is not None:
-            masks_np = masks.detach().cpu().numpy()
-            masks = torch.tensor(
-                [
-                    filter_depth(mask, depth_cv, self.depth_threshold)
-                    for mask in masks_np
-                ]
-            )
+        valid_class_idcs = []
+        valid_masks = []
+        for class_id, mask in zip(class_idcs, masks):
+            if class_id in self.label_space:
+                valid_class_idcs.append(class_id)
+                valid_masks.append(mask)
+                
+        valid_masks = torch.tensor(valid_masks)
+        masks_msg, _ = ros_utils.form_masks_msg(valid_class_idcs, valid_masks, self.bridge)
         label_msg = ros_utils.form_label_msg(
             pred[0].orig_img,
-            masks,
-            [labels.COCO_COLORS[x] for x in class_idcs],
+            valid_masks,
+            # 0 is background, instance count from 1
+            [labels.COCO_COLORS[x] for x in range(1, len(valid_masks) + 1)],
             self.bridge,
         )
-        masks_msg = ros_utils.form_masks_msg(class_idcs, masks, self.bridge)
 
         cam_info_msg_pub, vision_packet_msg = ros_utils.pack_vision_msgs(
-            cam_info_msg, color_msg, depth_msg, label_msg, masks_msg, self.bridge
+            cam_info_msg, color_msg, depth_msg, label_msg, masks_msg
         )
         self.cam_info_pub.publish(cam_info_msg_pub)
         self.vision_packet_pub.publish(vision_packet_msg)
@@ -88,5 +92,5 @@ class YoloRosNode:
 
 
 def main():
-    yolo_ros_node = YoloRosNode()
+    _ = YoloRosNode()
     rospy.spin()
