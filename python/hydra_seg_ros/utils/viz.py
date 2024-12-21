@@ -63,7 +63,6 @@ def masks(
             if retina_masks
             else ops.scale_image(im_mask_np, masked_img.shape)
         )
-        masked_img = masked_img.detach().cpu().numpy()
     else:
         masked_img = np.zeros_like(orig_img)
     return masked_img

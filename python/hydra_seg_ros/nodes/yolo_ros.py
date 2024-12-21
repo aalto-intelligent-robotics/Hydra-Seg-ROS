@@ -33,15 +33,15 @@ class YoloRosNode:
             )
         )
         self.conf = rospy.get_param("~conf", 0.7)
-        self.label_space_name = rospy.get_param("~label_space", "coco")
+        self.label_space_name = rospy.get_param("~label_space", "kitchen")
         self.viz_label = rospy.get_param("~viz_label", "true")
-        self.viz_label = rospy.get_param("~label_space", "kitchen")
 
         self.cam_info_sub = message_filters.Subscriber("~cam_info", CameraInfo)
         self.color_sub = message_filters.Subscriber("~colors", Image)
         self.depth_sub = message_filters.Subscriber("~depth", Image)
 
-        self.label_pub = rospy.Publisher("~label", Image, queue_size=10)
+        if self.viz_label:
+            self.label_pub = rospy.Publisher("~label", Image, queue_size=10)
         self.cam_info_pub = rospy.Publisher("~camera_info", CameraInfo, queue_size=10)
         self.vision_packet_pub = rospy.Publisher(
             "~vision_packet", HydraVisionPacket, queue_size=10
@@ -66,14 +66,15 @@ class YoloRosNode:
         if pred[0].masks is not None:
             masks = pred[0].masks.data
         valid_class_idcs = []
-        valid_masks = []
+        valid_masks = torch.tensor([]).to(masks.device)
         for class_id, mask in zip(class_idcs, masks):
             if class_id in self.label_space:
                 valid_class_idcs.append(class_id)
-                valid_masks.append(mask)
-                
-        valid_masks = torch.tensor(valid_masks)
-        masks_msg, _ = ros_utils.form_masks_msg(valid_class_idcs, valid_masks, self.bridge)
+                valid_masks = torch.cat([valid_masks, mask[None, :, :]], dim=0)
+
+        masks_msg, _ = ros_utils.form_masks_msg(
+            valid_class_idcs, valid_masks, self.bridge
+        )
         label_msg = ros_utils.form_label_msg(
             pred[0].orig_img,
             valid_masks,

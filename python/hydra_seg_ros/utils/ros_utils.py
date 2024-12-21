@@ -1,5 +1,5 @@
 import numpy as np
-from typing import List, Tuple, Dict, Set
+from typing import List, Tuple, Dict, Union
 from torch import Tensor
 from copy import deepcopy
 
@@ -17,6 +17,7 @@ def form_label_msg(
     colors: List[Tuple[int, int, int]],
     bridge: CvBridge,
 ) -> Image:
+    label_msg = Image()
     masked_img = viz.masks(orig_img, masks, colors, alpha=1, blacked_out_rest=True)
     label_msg = bridge.cv2_to_imgmsg(masked_img, encoding="rgb8")
     return label_msg
@@ -27,12 +28,12 @@ def form_masks_msg(
     masks_tensor: Tensor,
     bridge: CvBridge,
 ) -> Tuple[Masks, Dict]:
-    assert len(class_ids) == len(
-        masks_tensor
-    ), "Need equal number of masks and Ids to form Masks ROS message"
     masks_msg = Masks()
     masks_msg.masks = []
     local_id_to_class = {}
+    assert len(class_ids) == len(
+        masks_tensor
+    ), "Need equal number of masks and Ids to form Masks ROS message"
     instance_cnt = 1
     for id, mask in zip(class_ids, masks_tensor):
         m_msg = Mask()
