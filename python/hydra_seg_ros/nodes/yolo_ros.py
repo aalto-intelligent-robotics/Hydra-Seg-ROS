@@ -60,6 +60,7 @@ class YoloRosNode:
         self, cam_info_msg: CameraInfo, color_msg: Image, depth_msg: Image
     ):
         color_cv = self.bridge.imgmsg_to_cv2(color_msg)
+        height, width, _ = color_cv.shape
         pred = self.model(color_cv, conf=self.conf)
         class_idcs = pred[0].boxes.cls.cpu().numpy().astype(np.uint8)
         masks = torch.tensor([])
@@ -73,7 +74,7 @@ class YoloRosNode:
                 valid_masks = torch.cat([valid_masks, mask[None, :, :]], dim=0)
 
         masks_msg, _ = ros_utils.form_masks_msg(
-            valid_class_idcs, valid_masks, self.bridge
+            valid_class_idcs, valid_masks, height, width, self.bridge
         )
         label_msg = ros_utils.form_label_msg(
             pred[0].orig_img,

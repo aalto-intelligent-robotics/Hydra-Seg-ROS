@@ -2,6 +2,7 @@ import numpy as np
 from typing import List, Tuple, Dict, Union
 from torch import Tensor
 from copy import deepcopy
+import cv2
 
 import rospy
 from cv_bridge import CvBridge
@@ -26,6 +27,8 @@ def form_label_msg(
 def form_masks_msg(
     class_ids: List[int],
     masks_tensor: Tensor,
+    height: int,
+    width: int,
     bridge: CvBridge,
 ) -> Tuple[Masks, Dict]:
     masks_msg = Masks()
@@ -37,8 +40,9 @@ def form_masks_msg(
     instance_cnt = 1
     for id, mask in zip(class_ids, masks_tensor):
         m_msg = Mask()
+        mask_cv = cv2.resize(mask.detach().cpu().numpy().astype(np.uint8), (width, height))
         m_msg.data = bridge.cv2_to_imgmsg(
-            mask.detach().cpu().numpy().astype(np.uint8), encoding="mono8"
+            mask_cv, encoding="mono8"
         )
         m_msg.class_id = int(id)
         masks_msg.masks.append(m_msg)
