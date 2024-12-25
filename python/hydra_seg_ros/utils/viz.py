@@ -9,7 +9,7 @@ from ultralytics.data.augment import LetterBox
 
 
 def masks(
-    orig_img: Tensor,
+    orig_img: np.ndarray,
     masks: Tensor,
     colors: List[List[int]],
     alpha: float = 0.5,
@@ -43,12 +43,12 @@ def masks(
             im_device = im_device.to(masks.device)
         if blacked_out_rest:
             im_device[:] = 0
-        colors = (
+        colors_tensor = (
             torch.tensor(colors, device=masks.device, dtype=torch.float32) / 255.0
         )  # shape(n,3)
-        colors = colors[:, None, None]  # shape(n,1,1,3)
+        colors_tensor = colors_tensor[:, None, None]  # shape(n,1,1,3)
         masks = masks.unsqueeze(3)  # shape(n,h,w,1)
-        masks_color = masks * (colors * alpha)  # shape(n,h,w,3)
+        masks_color = masks * (colors_tensor * alpha)  # shape(n,h,w,3)
 
         inv_alpha_masks = (1 - masks * alpha).cumprod(0)  # shape(n,h,w,1)
         mcs = masks_color.max(dim=0).values  # shape(n,h,w,3)
@@ -59,54 +59,10 @@ def masks(
         im_mask = im_device * 255
         im_mask_np = im_mask.byte().cpu().numpy()
         masked_img[:] = (
-            im_mask_np if retina_masks else ops.scale_image(im_mask_np, masked_img.shape)
+            im_mask_np
+            if retina_masks
+            else ops.scale_image(im_mask_np, masked_img.shape)
         )
     else:
         masked_img = np.zeros_like(orig_img)
     return masked_img
-
-
-def overlay_masks(
-    masks: np.ndarray, class_idcs: np.ndarray, shape: Tuple[int, int]
-) -> np.ndarray:
-    """Overlays the masks of objects
-    Determines the order of masks based on mask size
-    """
-    mask_sizes = [np.sum(mask) for mask in masks]
-    sorted_mask_idcs = np.argsort(mask_sizes)
-
-    semantic_mask = np.zeros(shape)
-    instance_mask = -np.ones(shape)
-    for i_mask in sorted_mask_idcs[::-1]:  # largest to smallest
-        semantic_mask[masks[i_mask].astype(bool)] = class_idcs[i_mask]
-        instance_mask[masks[i_mask].astype(bool)] = i_mask
-
-    return semantic_mask, instance_mask
-
-
-def filter_depth(
-    mask: np.ndarray, depth: np.ndarray, depth_threshold: Optional[float] = None
-) -> np.ndarray:
-    """Filter object mask by depth.
-
-    Arguments:
-        mask: binary object mask of shape (height, width)
-        depth: depth map of shape (height, width)
-        depth_threshold: restrict mask to (depth median - threshold, depth median + threshold)
-    """
-    assert (
-        depth_threshold == -1 or depth_threshold > 0
-    ), f"Depth threshold must be > 0, or -1 to ignore depth filtering, but received {depth_threshold} "
-    md = np.median(depth[mask == 1])  # median depth
-    if md == 0:
-        # Remove mask if more than half of points has invalid depth
-        filter_mask = np.ones_like(mask, dtype=bool)
-    elif depth_threshold != -1:
-        # Restrict objects to depth_threshold
-        filter_mask = (depth >= md + depth_threshold) | (depth <= md - depth_threshold)
-    else:
-        filter_mask = np.zeros_like(mask, dtype=bool)
-    mask_out = mask.copy()
-    mask_out[filter_mask] = 0.0
-
-    return mask_out
