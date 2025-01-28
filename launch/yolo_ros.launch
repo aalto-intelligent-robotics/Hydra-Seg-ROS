@@ -12,6 +12,9 @@
   <arg name="cam_info_topic" default="/$(arg camera_name)/depth/camera_info"/>
   <arg name="yolo_verbosity" default="0"/>
   <arg name="color_mesh_by_label" default="false"/>
+  <arg name="label_space_path" default="/home/ros/hydra_ws/src/hydra_stretch/config/label_spaces"/>
+  <arg name="label_space_filename" default="coco_kitchen_large_objects_label_space.yaml" />
+  <arg name="label_space_file" default="$(arg label_space_path)/$(arg label_space_filename)" />
   <node name="yolo_ros_node" pkg="hydra_seg_ros" type="yolo_ros_node.py" output="screen">
     <env name="YOLO_VERBOSE" value="$(arg yolo_verbosity)"/>
     <remap from="/yolo_ros_node/cam_info" to="$(arg cam_info_topic)"/>
@@ -21,5 +24,6 @@
     <param name="conf" value="$(arg conf)"/>
     <param name="depth_threshold" value="$(arg depth_threshold)"/>
     <param name="color_mesh_by_label" value="$(arg color_mesh_by_label)"/>
+    <param name="label_space_file" value="$(arg label_space_file)" />
   </node>
 </launch>

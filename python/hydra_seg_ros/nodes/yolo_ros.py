@@ -4,6 +4,11 @@ from cv_bridge import CvBridge
 from pathlib import Path
 import numpy as np
 import torch
+import yaml
+try:
+    from yaml import CLoader as Loader
+except ImportError:
+    from yaml import Loader
 
 from ultralytics import YOLO
 
@@ -24,8 +29,13 @@ class YoloRosNode:
             "~model_path", Path.home() / "models/yolo/yolo11l-seg.engine"
         )
         self.model = YOLO(str(self.model_path), verbose=False)
-        self.conf = rospy.get_param("~conf", 0.7)
-        self.label_space = rospy.get_param("~label_space", "coco")
+        self.conf = rospy.get_param("~conf", 0.5)
+        self.label_space_file = rospy.get_param(
+            "~label_space_file",
+            "/home/ros/hydra_ws/src/hydra_stretch/config/label_spaces/coco_kitchen_large_objects_label_space.yaml",
+        )
+        with open(str(self.label_space_file), "r") as f:
+            self.label_space = yaml.load(f, Loader=Loader)['object_labels']
         self.viz_label = rospy.get_param("~viz_label", "true")
         self.color_mesh_by_label = rospy.get_param("~color_mesh_by_label", "false")
 
@@ -53,7 +63,7 @@ class YoloRosNode:
     ):
         color_cv = self.bridge.imgmsg_to_cv2(color_msg)
         height, width, _ = color_cv.shape
-        pred = self.model(color_cv, conf=self.conf)
+        pred = self.model(color_cv, conf=self.conf, classes=self.label_space)
         class_idcs = pred[0].boxes.cls.cpu().numpy().astype(np.uint8)
         masks = torch.tensor([])
         if pred[0].masks is not None:
