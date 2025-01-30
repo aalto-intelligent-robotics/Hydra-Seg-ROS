@@ -48,6 +48,7 @@ class YoloRosNode:
         self.vision_packet_pub = rospy.Publisher(
             "~vision_packet", HydraVisionPacket, queue_size=10
         )
+        self.map_view_cnt: int = 0
 
         self.synchronizer = message_filters.ApproximateTimeSynchronizer(
             [self.cam_info_sub, self.color_sub, self.depth_sub],
@@ -81,12 +82,13 @@ class YoloRosNode:
         )
 
         cam_info_msg_pub, vision_packet_msg = ros_utils.pack_vision_msgs(
-            cam_info_msg, color_msg, depth_msg, label_msg, masks_msg
+            self.map_view_cnt, cam_info_msg, color_msg, depth_msg, label_msg, masks_msg
         )
         self.cam_info_pub.publish(cam_info_msg_pub)
         self.vision_packet_pub.publish(vision_packet_msg)
         if self.viz_label:
             self.label_pub.publish(vision_packet_msg.label)
+        self.map_view_cnt += 1
 
 
 def main():

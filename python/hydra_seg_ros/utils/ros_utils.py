@@ -47,6 +47,7 @@ def form_masks_msg(
 
 
 def pack_vision_msgs(
+    map_view_id: int,
     cam_info_msg: CameraInfo,
     color_msg: Image,
     depth_msg: Image,
@@ -58,6 +59,7 @@ def pack_vision_msgs(
 
     now = rospy.Time.now()
 
+    vision_packet_msg.map_view_id = map_view_id
     vision_packet_msg.color = deepcopy(color_msg)
     vision_packet_msg.depth = deepcopy(depth_msg)
     vision_packet_msg.label = deepcopy(label_msg)
