@@ -22,29 +22,22 @@ def form_label_msg(
     label_msg = bridge.cv2_to_imgmsg(masked_img, encoding="rgb8")
     return label_msg
 
-
-def form_masks_msg(
-    class_ids: List[int],
-    masks_tensor: Tensor,
+def form_mask_msg(
+    mask_id: int,
+    class_id: int,
+    mask: Tensor,
     bridge: CvBridge,
     height: int,
     width: int,
-) -> Masks:
-    assert len(class_ids) == len(
-        masks_tensor
-    ), "Need equal number of masks and Ids to form Masks ROS message"
-    masks_msg = Masks()
-    masks_msg.masks = []
-    for id, mask in zip(class_ids, masks_tensor):
-        m_msg = Mask()
-        mask_cv = mask.detach().cpu().numpy().astype(np.uint8)
-        m_msg.data = bridge.cv2_to_imgmsg(
-            cv2.resize(mask_cv, (width, height)), encoding="mono8"
-        )
-        m_msg.class_id = int(id)
-        masks_msg.masks.append(m_msg)
-    return masks_msg
-
+) -> Mask:
+    m_msg = Mask()
+    mask_cv = mask.detach().cpu().numpy().astype(np.uint8)
+    m_msg.mask_id = mask_id
+    m_msg.data = bridge.cv2_to_imgmsg(
+        cv2.resize(mask_cv, (width, height)), encoding="mono8"
+    )
+    m_msg.class_id = int(class_id)
+    return m_msg
 
 def pack_vision_msgs(
     map_view_id: int,

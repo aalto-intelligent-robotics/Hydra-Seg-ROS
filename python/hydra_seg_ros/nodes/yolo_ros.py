@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import yaml
+
 try:
     from yaml import CLoader as Loader
 except ImportError:
@@ -13,7 +14,7 @@ except ImportError:
 from ultralytics import YOLO
 
 from sensor_msgs.msg import Image, CameraInfo
-from hydra_stretch_msgs.msg import HydraVisionPacket
+from hydra_stretch_msgs.msg import HydraVisionPacket, Mask, Masks
 
 from hydra_seg_ros.utils import labels, ros_utils
 
@@ -35,7 +36,7 @@ class YoloRosNode:
             "/home/ros/hydra_ws/src/hydra_stretch/config/label_spaces/coco_kitchen_large_objects_label_space.yaml",
         )
         with open(str(self.label_space_file), "r") as f:
-            self.label_space = yaml.load(f, Loader=Loader)['object_labels']
+            self.label_space = yaml.load(f, Loader=Loader)["object_labels"]
         self.viz_label = rospy.get_param("~viz_label", "true")
         self.color_mesh_by_label = rospy.get_param("~color_mesh_by_label", "false")
 
@@ -49,6 +50,7 @@ class YoloRosNode:
             "~vision_packet", HydraVisionPacket, queue_size=10
         )
         self.map_view_cnt: int = 0
+        self.mask_id_cnt: int = 0
 
         self.synchronizer = message_filters.ApproximateTimeSynchronizer(
             [self.cam_info_sub, self.color_sub, self.depth_sub],
@@ -77,9 +79,26 @@ class YoloRosNode:
         )
         if self.color_mesh_by_label:
             color_msg = label_msg
-        masks_msg = ros_utils.form_masks_msg(
-            class_idcs, masks, self.bridge, height, width
-        )
+        # masks_msg = ros_utils.form_masks_msg(
+        #     class_idcs, masks, self.bridge, height, width
+        # )
+
+        assert len(class_idcs) == len(
+            masks
+        ), "Need equal number of masks and Ids to form Masks ROS message"
+        masks_msg = Masks()
+        masks_msg.masks = []
+        for id, mask in zip(class_idcs, masks):
+            m_msg: Mask = ros_utils.form_mask_msg(
+                mask_id=self.mask_id_cnt,
+                class_id=id,
+                mask=mask,
+                bridge=self.bridge,
+                height=height,
+                width=width,
+            )
+            masks_msg.masks.append(m_msg)
+            self.mask_id_cnt += 1
 
         cam_info_msg_pub, vision_packet_msg = ros_utils.pack_vision_msgs(
             self.map_view_cnt, cam_info_msg, color_msg, depth_msg, label_msg, masks_msg
