@@ -64,7 +64,15 @@ class YoloRosNode:
         self.bridge = CvBridge()
 
         # Warm up
-        rand_cv_input = np.random.rand(172, 224, 3)
+        im_width = rospy.get_param("im_width", 800)
+        im_height = rospy.get_param("im_height", 600)
+        assert isinstance(im_width, int), f"Image Width needs to be int, got {im_width}"
+        assert isinstance(
+            im_height, int
+        ), f"Image Height needs to be int, got {im_height}"
+        self.im_width = im_width
+        self.im_height = im_height
+        rand_cv_input = np.random.rand(im_height, im_width, 3)
         self.model(rand_cv_input, conf=self.conf, classes=self.label_space)
 
     def vision_callback(
@@ -76,6 +84,10 @@ class YoloRosNode:
         else:
             color_cv_input = color_cv
         height, width, _ = color_cv.shape
+        assert [height, width] == [
+            self.im_height,
+            self.im_width,
+        ], f"Image dims invalid, {[height, width]} != {self.im_height, self.im_width}"
         pred = self.model(color_cv_input, conf=self.conf, classes=self.label_space)
         class_idcs = pred[0].boxes.cls.cpu().numpy().astype(np.uint8)
         masks = torch.tensor([])
