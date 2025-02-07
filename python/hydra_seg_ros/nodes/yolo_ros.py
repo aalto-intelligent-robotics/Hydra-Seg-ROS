@@ -5,6 +5,7 @@ from pathlib import Path
 import numpy as np
 import torch
 import yaml
+import cv2
 
 try:
     from yaml import CLoader as Loader
@@ -29,6 +30,7 @@ class YoloRosNode:
         self.model_path = rospy.get_param(
             "~model_path", Path.home() / "models/yolo/yolo11l-seg.engine"
         )
+        self.rot_90 = bool(rospy.get_param("rot_90", True))
         self.model = YOLO(str(self.model_path), verbose=False)
         self.conf = rospy.get_param("~conf", 0.5)
         self.label_space_file = rospy.get_param(
@@ -61,12 +63,20 @@ class YoloRosNode:
         self.synchronizer.registerCallback(self.vision_callback)
         self.bridge = CvBridge()
 
+        # Warm up
+        rand_cv_input = np.random.rand(172, 224, 3)
+        self.model(rand_cv_input, conf=self.conf, classes=self.label_space)
+
     def vision_callback(
         self, cam_info_msg: CameraInfo, color_msg: Image, depth_msg: Image
     ):
         color_cv = self.bridge.imgmsg_to_cv2(color_msg)
+        if self.rot_90:
+            color_cv_input = cv2.rotate(color_cv, cv2.ROTATE_90_CLOCKWISE)
+        else:
+            color_cv_input = color_cv
         height, width, _ = color_cv.shape
-        pred = self.model(color_cv, conf=self.conf, classes=self.label_space)
+        pred = self.model(color_cv_input, conf=self.conf, classes=self.label_space)
         class_idcs = pred[0].boxes.cls.cpu().numpy().astype(np.uint8)
         masks = torch.tensor([])
         if pred[0].masks is not None:
@@ -76,6 +86,7 @@ class YoloRosNode:
             masks,
             [list(labels.COCO_COLORS[x]) for x in class_idcs],
             self.bridge,
+            self.rot_90,
         )
         if self.color_mesh_by_label:
             color_msg = label_msg
@@ -96,6 +107,7 @@ class YoloRosNode:
                 bridge=self.bridge,
                 height=height,
                 width=width,
+                rot_90=self.rot_90,
             )
             masks_msg.masks.append(m_msg)
             self.mask_id_cnt += 1

@@ -4,6 +4,7 @@
   <arg name="conf" default="0.5"/>
   <arg name="depth_threshold" default="-1"/>
   <arg name="camera_name" default="astra2" />
+  <arg name="rot_90" default="false" />
   <!-- <arg name="color_topic" default="/flat_data_player/color_image"/> -->
   <!-- <arg name="depth_topic" default="/flat_data_player/depth_image"/> -->
   <!-- <arg name="cam_info_topic" default="/flat_data_player/depth_camera_info"/> -->
@@ -25,5 +26,6 @@
     <param name="depth_threshold" value="$(arg depth_threshold)"/>
     <param name="color_mesh_by_label" value="$(arg color_mesh_by_label)"/>
     <param name="label_space_file" value="$(arg label_space_file)" />
+    <param name="rot_90" value="$(arg rot_90)" />
   </node>
 </launch>

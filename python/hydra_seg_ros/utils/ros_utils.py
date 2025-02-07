@@ -17,10 +17,14 @@ def form_label_msg(
     masks: Tensor,
     colors: List[List[int]],
     bridge: CvBridge,
+    rot_90: bool = False,
 ) -> Image:
     masked_img = viz.masks(orig_img, masks, colors, alpha=1, blacked_out_rest=True)
+    if rot_90:
+        masked_img = cv2.rotate(masked_img, cv2.ROTATE_90_COUNTERCLOCKWISE)
     label_msg = bridge.cv2_to_imgmsg(masked_img, encoding="rgb8")
     return label_msg
+
 
 def form_mask_msg(
     mask_id: int,
@@ -29,15 +33,19 @@ def form_mask_msg(
     bridge: CvBridge,
     height: int,
     width: int,
+    rot_90: bool = False,
 ) -> Mask:
     m_msg = Mask()
     mask_cv = mask.detach().cpu().numpy().astype(np.uint8)
+    if rot_90:
+        mask_cv = cv2.rotate(mask_cv, cv2.ROTATE_90_COUNTERCLOCKWISE)
     m_msg.mask_id = mask_id
     m_msg.data = bridge.cv2_to_imgmsg(
         cv2.resize(mask_cv, (width, height)), encoding="mono8"
     )
     m_msg.class_id = int(class_id)
     return m_msg
+
 
 def pack_vision_msgs(
     map_view_id: int,
@@ -47,7 +55,7 @@ def pack_vision_msgs(
     label_msg: Image,
     masks_msg: Optional[Masks],
 ) -> Tuple[CameraInfo, HydraVisionPacket]:
-    
+
     vision_packet_msg = HydraVisionPacket()
 
     now = rospy.Time.now()
