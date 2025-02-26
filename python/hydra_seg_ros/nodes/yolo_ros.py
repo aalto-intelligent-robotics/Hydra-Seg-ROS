@@ -30,7 +30,7 @@ class YoloRosNode:
         self.model_path = rospy.get_param(
             "~model_path", Path.home() / "models/yolo/yolo11l-seg.engine"
         )
-        self.rot_90 = bool(rospy.get_param("rot_90", True))
+        # self.rot_90 = rospy.get_param("rot_90", True)
         self.model = YOLO(str(self.model_path), verbose=False)
         self.conf = rospy.get_param("~conf", 0.5)
         self.label_space_file = rospy.get_param(
@@ -79,10 +79,10 @@ class YoloRosNode:
         self, cam_info_msg: CameraInfo, color_msg: Image, depth_msg: Image
     ):
         color_cv = self.bridge.imgmsg_to_cv2(color_msg)
-        if self.rot_90:
-            color_cv_input = cv2.rotate(color_cv, cv2.ROTATE_90_CLOCKWISE)
-        else:
-            color_cv_input = color_cv
+        # if self.rot_90:
+        # color_cv_input = cv2.rotate(color_cv, cv2.ROTATE_90_CLOCKWISE)
+        # else:
+        color_cv_input = color_cv
         height, width, _ = color_cv.shape
         assert [height, width] == [
             self.im_height,
@@ -98,17 +98,14 @@ class YoloRosNode:
             masks,
             [list(labels.COCO_COLORS[x]) for x in class_idcs],
             self.bridge,
-            self.rot_90,
+            # self.rot_90,
         )
         if self.color_mesh_by_label:
             color_msg = label_msg
-        # masks_msg = ros_utils.form_masks_msg(
-        #     class_idcs, masks, self.bridge, height, width
-        # )
 
         assert len(class_idcs) == len(
             masks
-        ), "Need equal number of masks and Ids to form Masks ROS message"
+        ), "Need equal number of masks and class labels to form Masks ROS message"
         masks_msg = Masks()
         masks_msg.masks = []
         for id, mask in zip(class_idcs, masks):
@@ -119,7 +116,7 @@ class YoloRosNode:
                 bridge=self.bridge,
                 height=height,
                 width=width,
-                rot_90=self.rot_90,
+                # rot_90=self.rot_90,
             )
             masks_msg.masks.append(m_msg)
             self.mask_id_cnt += 1
