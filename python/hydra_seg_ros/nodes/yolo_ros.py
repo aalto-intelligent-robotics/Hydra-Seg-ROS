@@ -15,7 +15,7 @@ except ImportError:
 from ultralytics import YOLO
 
 from sensor_msgs.msg import Image, CameraInfo
-from hydra_stretch_msgs.msg import HydraVisionPacket, Mask, Masks
+from hydra_msgs.msg import HydraVisionPacket, Mask, Masks
 
 from hydra_seg_ros.utils import labels, ros_utils
 

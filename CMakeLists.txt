@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.0.2)
 project(hydra_seg_ros)
 
 find_package(catkin REQUIRED COMPONENTS
-  hydra_stretch_msgs
+  hydra_msgs
   roscpp
   rospy
   sensor_msgs

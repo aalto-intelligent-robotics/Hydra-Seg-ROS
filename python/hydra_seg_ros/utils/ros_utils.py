@@ -7,7 +7,7 @@ from copy import deepcopy
 import rospy
 from cv_bridge import CvBridge
 from sensor_msgs.msg import Image, CameraInfo
-from hydra_stretch_msgs.msg import Mask, Masks, HydraVisionPacket
+from hydra_msgs.msg import Mask, Masks, HydraVisionPacket
 
 from hydra_seg_ros.utils import viz
 
